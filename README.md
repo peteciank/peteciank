@@ -1,6 +1,6 @@
 ### Hey there 👋, I'm [Pedro Ciancaglini](https://www.linkedin.com/in/pedrociancaglini/) 👨‍💻
 
-<p align="center"><img src="https://i.ibb.co/S3FwFX7/Developer.jpg" alt="Developer" border="0"></p>
+<p align="center"><img src="https://raw.githubusercontent.com/peteciank/public_files/main/images/me_programming.jfif" alt="Developer" border="0"></p>
 
 <!-- :smiley: Technical member of **[Team KJSCE Robocon](https://kjscerobocon.tech/)**
 
