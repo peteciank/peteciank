@@ -1,0 +1,498 @@
+import React, { useState, useEffect, useRef } from 'react';
+
+const TimerApp = () => {
+  // Training configuration
+  const [config, setConfig] = useState({
+    phases: [
+      { rhythm: 'R1', duration: 2 * 60, speed: 7 }, // 2 minutes in seconds, 7 km/h
+      { rhythm: 'R2', duration: 2 * 60, speed: 10 }, // 2 minutes in seconds, 10 km/h
+    ],
+    repetitions: 3,
+    restDuration: 3 * 60, // 3 minutes in seconds, R0
+    blocks: 4,
+    changeBandsAfter: 2, // Change bands after 2 blocks
+  });
+
+  // App state
+  const [timer, setTimer] = useState(0);
+  const [isRunning, setIsRunning] = useState(false);
+  const [currentPhase, setCurrentPhase] = useState('Setup');
+  const [currentRhythm, setCurrentRhythm] = useState(null);
+  const [currentRep, setCurrentRep] = useState(1);
+  const [currentBlock, setCurrentBlock] = useState(1);
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [showChangeBands, setShowChangeBands] = useState(false);
+  const [trainingComplete, setTrainingComplete] = useState(false);
+  
+  const intervalRef = useRef(null);
+  const beepSound = useRef(null);
+
+  useEffect(() => {
+    // Create audio for alerts
+    beepSound.current = new Audio('data:audio/wav;base64,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');
+    
+    // Initialize wakeLock API reference
+    window.wakeLockObj = null;
+    
+    return () => {
+      // Clean up - clear interval and release wake lock if exists
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      
+      if (window.wakeLockObj) {
+        window.wakeLockObj.release()
+          .then(() => {
+            console.log('Wake Lock released on unmount');
+            window.wakeLockObj = null;
+          });
+      }
+    };
+  }, []);
+
+  // Format time as MM:SS
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Start the training routine
+ // Updated startTraining function
+const startTraining = () => {
+  if (isRunning) return;
+  
+  // Only initialize training if we're starting from the beginning
+  if (currentPhase === 'Setup') {
+    setTrainingComplete(false);
+    setCurrentBlock(1);
+    setCurrentRep(1);
+    
+    // Make sure we start with the first phase rhythm from our config
+    const firstPhase = config.phases[0];
+    setCurrentPhase(firstPhase.rhythm);
+    setCurrentRhythm(firstPhase.rhythm);
+    setTimeLeft(firstPhase.duration);
+    setShowChangeBands(false);
+  }
+  
+  setIsRunning(true);
+  
+  // Request wake lock to prevent screen from sleeping
+  if ('wakeLock' in navigator) {
+    navigator.wakeLock.request('screen')
+      .then(lock => {
+        console.log('Wake Lock is active');
+        // Store the wake lock for later release
+        window.wakeLockObj = lock;
+      })
+      .catch(err => {
+        console.error(`Wake Lock error: ${err.name}, ${err.message}`);
+      });
+  }
+  
+  intervalRef.current = setInterval(() => {
+    setTimeLeft(prevTimeLeft => {
+      const newTimeLeft = prevTimeLeft - 1;
+      
+      // If the current phase is complete
+      if (newTimeLeft <= 0) {
+        beepSound.current.play().catch(e => console.error("Couldn't play sound", e));
+        
+        // Log current state for debugging
+        console.log(`Phase complete: ${currentPhase}, Rep: ${currentRep}/${config.repetitions}, Block: ${currentBlock}/${config.blocks}`);
+        
+        let nextTimeLeft = 0;
+        
+        // Handle phase transition logic
+        if (currentPhase === 'Rest (R0)') {
+          // After rest, go back to first rhythm in sequence
+          console.log("Transitioning from Rest to first rhythm");
+          const firstPhase = config.phases[0];
+          setCurrentPhase(firstPhase.rhythm);
+          setCurrentRhythm(firstPhase.rhythm);
+          nextTimeLeft = firstPhase.duration;
+        }
+        else if (currentPhase === 'CHANGE BANDS') {
+          // This is handled by the setTimeout in the original code
+          // We don't need to do anything here
+          return 0;
+        }
+        else {
+          // Find the current phase index - by matching rhythm with currentPhase
+          const currentPhaseIndex = config.phases.findIndex(p => p.rhythm === currentPhase);
+          console.log(`Current phase index: ${currentPhaseIndex}, Total phases: ${config.phases.length}`);
+          
+          if (currentPhaseIndex !== -1 && currentPhaseIndex < config.phases.length - 1) {
+            // Still have more rhythms in the current sequence
+            console.log("Moving to next rhythm in sequence");
+            const nextPhase = config.phases[currentPhaseIndex + 1];
+            setCurrentPhase(nextPhase.rhythm);
+            setCurrentRhythm(nextPhase.rhythm);
+            nextTimeLeft = nextPhase.duration;
+          }
+          else if (currentRep < config.repetitions) {
+            // Completed all rhythms in sequence, but still have more repetitions
+            console.log("Completed rhythm sequence, moving to next repetition");
+            setCurrentRep(prev => prev + 1);
+            const firstPhase = config.phases[0];
+            setCurrentPhase(firstPhase.rhythm);
+            setCurrentRhythm(firstPhase.rhythm);
+            nextTimeLeft = firstPhase.duration;
+          }
+          else {
+            // Completed all repetitions in the current block
+            console.log("Completed all repetitions in block");
+            
+            if (currentBlock < config.blocks) {
+              // Check if we need to change bands
+              if (currentBlock % config.changeBandsAfter === 0) {
+                console.log("Time to change bands");
+                setShowChangeBands(true);
+                setCurrentPhase('CHANGE BANDS');
+                setCurrentRhythm(null);
+                nextTimeLeft = 15;
+                
+                // Schedule transition after band change
+                setTimeout(() => {
+                  if (isRunning) {
+                    console.log("Band change complete, moving to next block with rest");
+                    setShowChangeBands(false);
+                    setCurrentBlock(prev => prev + 1);
+                    setCurrentRep(1);
+                    setCurrentPhase('Rest (R0)');
+                    setCurrentRhythm('R0');
+                    setTimeLeft(config.restDuration);
+                  }
+                }, 15000);
+              } else {
+                // No band change needed, move to next block with rest
+                console.log("Moving to next block with rest");
+                setCurrentBlock(prev => prev + 1);
+                setCurrentRep(1);
+                setCurrentPhase('Rest (R0)');
+                setCurrentRhythm('R0');
+                nextTimeLeft = config.restDuration;
+              }
+            } else {
+              // Training complete
+              console.log("Training complete!");
+              clearInterval(intervalRef.current);
+              setIsRunning(false);
+              setCurrentPhase('Complete');
+              setCurrentRhythm(null);
+              setTrainingComplete(true);
+              
+              // Release wake lock when training is complete
+              if (window.wakeLockObj) {
+                window.wakeLockObj.release()
+                  .then(() => {
+                    console.log('Wake Lock released');
+                    window.wakeLockObj = null;
+                  });
+              }
+              
+              nextTimeLeft = 0;
+            }
+          }
+        }
+        
+        return nextTimeLeft;
+      }
+      
+      return newTimeLeft;
+    });
+    
+    setTimer(prev => prev + 1);
+  }, 1000);
+};
+
+  // Pause the training
+  const pauseTraining = () => {
+    clearInterval(intervalRef.current);
+    setIsRunning(false);
+    // We don't reset any state here, just stop the timer
+  };
+
+  // Reset the training
+  const resetTraining = () => {
+    clearInterval(intervalRef.current);
+    setIsRunning(false);
+    setTimer(0);
+    setCurrentPhase('Setup');
+    setCurrentRhythm(null);
+    setCurrentRep(1);
+    setCurrentBlock(1);
+    setTimeLeft(0);
+    setShowChangeBands(false);
+    setTrainingComplete(false);
+    
+    // Release wake lock when resetting
+    if (window.wakeLockObj) {
+      window.wakeLockObj.release()
+        .then(() => {
+          console.log('Wake Lock released on reset');
+          window.wakeLockObj = null;
+        });
+    }
+  };
+
+  // Update configuration
+  const handleConfigChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Handle time inputs (convert minutes to seconds)
+    if (name === 'restDuration') {
+      setConfig(prev => ({
+        ...prev,
+        [name]: parseInt(value) * 60
+      }));
+    } else {
+      setConfig(prev => ({
+        ...prev,
+        [name]: parseInt(value)
+      }));
+    }
+  };
+
+  return (
+    <div className="flex flex-col items-center min-h-screen bg-gray-50 p-4">
+      {/* Header */}
+      <header className="w-full text-center mb-6">
+        <h1 className="text-3xl font-bold text-blue-800">Rowing Training Timer</h1>
+      </header>
+
+      {/* Main Timer Display */}
+      <div className={`w-full max-w-md rounded-xl shadow-lg p-6 mb-6 
+        ${currentPhase === 'CHANGE BANDS' ? 'bg-yellow-100 border-yellow-500 border-4' : 
+          currentPhase === 'Complete' ? 'bg-gray-100' : 
+          currentPhase === 'Rest (R0)' ? 'bg-green-100 border-green-500 border-4' : 
+          currentPhase?.startsWith('R') ? 'bg-blue-100 border-blue-500 border-4' : 
+          'bg-white'}`}>
+        
+        {/* Timer */}
+        <div className="text-center mb-4">
+          <div className="text-6xl font-bold mb-2">
+            {formatTime(timeLeft)}
+          </div>
+          <div className="text-4xl font-bold mb-2">
+            {currentPhase}
+          </div>
+          {currentRhythm && currentRhythm !== 'R0' && (
+            <div className="text-3xl font-semibold">
+              {(() => {
+                const phase = config.phases.find(p => p.rhythm === currentRhythm);
+                return phase ? `${phase.speed} km/h` : '';
+              })()}
+            </div>
+          )}
+        </div>
+        
+        {/* Progress Indicators */}
+        <div className="grid grid-cols-2 gap-4 text-center">
+          <div>
+            <div className="text-lg font-medium">Block</div>
+            <div className="text-2xl font-bold">
+              {currentBlock}/{config.blocks}
+            </div>
+          </div>
+          <div>
+            <div className="text-lg font-medium">Repetition</div>
+            <div className="text-2xl font-bold">
+              {currentRep}/{config.repetitions}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Change Bands Alert */}
+      {showChangeBands && (
+        <div className="w-full max-w-md bg-yellow-300 border-4 border-yellow-600 rounded-xl p-6 mb-6 animate-pulse">
+          <div className="text-4xl font-bold text-center text-yellow-900">
+            CHANGE BANDS
+          </div>
+        </div>
+      )}
+
+      {/* Training Complete Alert */}
+      {trainingComplete && (
+        <div className="w-full max-w-md bg-green-300 border-4 border-green-600 rounded-xl p-6 mb-6">
+          <div className="text-4xl font-bold text-center text-green-900">
+            TRAINING COMPLETE
+          </div>
+        </div>
+      )}
+
+      {/* Control Buttons */}
+      <div className="w-full max-w-md flex justify-center space-x-4 mb-6">
+        {!isRunning ? (
+          <button 
+            onClick={startTraining}
+            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+          >
+            {timer === 0 ? 'Start' : 'Resume'}
+          </button>
+        ) : (
+          <button 
+            onClick={pauseTraining}
+            className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-4 px-6 rounded-lg text-xl"
+          >
+            Pause
+          </button>
+        )}
+        <button 
+          onClick={resetTraining}
+          className="flex-1 bg-red-600 hover:bg-red-700 text-white font-bold py-4 px-6 rounded-lg text-xl"
+        >
+          Reset
+        </button>
+      </div>
+
+      {/* Configuration Panel */}
+      {currentPhase === 'Setup' && (
+        <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-6">
+          <h2 className="text-2xl font-bold mb-4 text-center">Training Setup</h2>
+          
+          {/* Rhythm Configuration */}
+          <div className="mb-4">
+            <h3 className="text-lg font-medium mb-2">Rhythm Settings</h3>
+            
+            {config.phases.map((phase, index) => (
+              <div key={index} className="grid grid-cols-3 gap-2 mb-2 border-b pb-2">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Rhythm
+                  </label>
+                  <select
+                    value={phase.rhythm}
+                    onChange={(e) => {
+                      const newPhases = [...config.phases];
+                      newPhases[index].rhythm = e.target.value;
+                      newPhases[index].speed = parseInt(e.target.selectedOptions[0].getAttribute('data-speed') || '0');
+                      setConfig(prev => ({...prev, phases: newPhases}));
+                    }}
+                    className="w-full p-2 border rounded-lg"
+                  >
+                    <option value="R0" data-speed="0">R0 (0 km/h)</option>
+                    <option value="R1" data-speed="7">R1 (7 km/h)</option>
+                    <option value="R2" data-speed="10">R2 (10 km/h)</option>
+                    <option value="R3" data-speed="12">R3 (12 km/h)</option>
+                    <option value="R4" data-speed="13">R4 (13 km/h)</option>
+                    <option value="R5" data-speed="14">R5 (14 km/h)</option>
+                    <option value="R6" data-speed="15">R6 (15 km/h)</option>
+                    <option value="R7" data-speed="16">R7 (16 km/h)</option>
+                    <option value="R8" data-speed="17">R8 (17 km/h)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Duration (min)
+                  </label>
+                  <input
+                    type="number"
+                    value={phase.duration / 60}
+                    onChange={(e) => {
+                      const newPhases = [...config.phases];
+                      newPhases[index].duration = parseInt(e.target.value) * 60;
+                      setConfig(prev => ({...prev, phases: newPhases}));
+                    }}
+                    className="w-full p-2 border rounded-lg"
+                    min="1"
+                  />
+                </div>
+                <div className="flex items-end">
+                  {config.phases.length > 1 && (
+                    <button
+                      onClick={() => {
+                        const newPhases = config.phases.filter((_, i) => i !== index);
+                        setConfig(prev => ({...prev, phases: newPhases}));
+                      }}
+                      className="p-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 mb-0.5"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            <button
+              onClick={() => {
+                setConfig(prev => ({
+                  ...prev, 
+                  phases: [...prev.phases, { rhythm: 'R1', duration: 2 * 60, speed: 7 }]
+                }));
+              }}
+              className="mt-2 p-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Add Rhythm Phase
+            </button>
+          </div>
+          
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Repetitions
+              </label>
+              <input
+                type="number"
+                name="repetitions"
+                value={config.repetitions}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded-lg"
+                min="1"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Rest Duration (min)
+              </label>
+              <input
+                type="number"
+                name="restDuration"
+                value={config.restDuration / 60}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded-lg"
+                min="1"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Total Blocks
+              </label>
+              <input
+                type="number"
+                name="blocks"
+                value={config.blocks}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded-lg"
+                min="1"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Change Bands After
+              </label>
+              <input
+                type="number"
+                name="changeBandsAfter"
+                value={config.changeBandsAfter}
+                onChange={handleConfigChange}
+                className="w-full p-2 border rounded-lg"
+                min="1"
+                max={config.blocks}
+              />
+            </div>
+          </div>
+          
+          <div className="text-center text-sm text-gray-600 mb-4">
+            {`Training summary: (${config.phases.map(p => `${p.duration / 60}min ${p.rhythm}`).join(' + ')} × ${config.repetitions} reps) × ${config.blocks} blocks with ${config.restDuration / 60}min rest (R0) between blocks. Change bands after every ${config.changeBandsAfter} blocks.`}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default TimerApp;
